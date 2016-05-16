@@ -13,7 +13,6 @@ namespace SSoftTest
     internal class MyGlossary : IEnumerable
     {
         private List<string> keyWordList;
-        //private System.Int32 position = -1;
 
         /// <summary>
         /// Конструктор класса "Словарь"

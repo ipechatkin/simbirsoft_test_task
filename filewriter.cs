@@ -14,9 +14,7 @@ namespace SSoftTest
     class FileWriter : IDisposable
     {
         private System.Int32 partCounter;
-        private System.Int32 linePerFile;
         private System.String fileName;
-        private System.UInt32 currentLineCounter;
         private StreamWriter sw = null;
 
         /// <summary>
@@ -24,10 +22,9 @@ namespace SSoftTest
         /// </summary>
         /// <param name="fFileName">Имя выходного файла.</param>
         /// <param name="fLinePerFile">Количество строк на файл.</param>
-        public FileWriter(System.String fFileName, System.Int32 fLinePerFile)
+        public FileWriter(System.String fFileName)
         {
             fileName = fFileName;
-            linePerFile = fLinePerFile;
             partCounter = 0;
             CreateNextPart();
         }
@@ -39,16 +36,7 @@ namespace SSoftTest
         /// <remarks>Метод Writeline отслеживает количество записанных строк. При превышении лимита вызывается метод CreateNextPart.</remarks>
         public void WriteLine(System.String fLine)
         {
-            ++currentLineCounter;
-            
-            if (currentLineCounter > linePerFile)
-            {
-                CreateNextPart();
-                ++currentLineCounter;
-            }
-
-            sw.WriteLine("<br>" + fLine);
-            
+            sw.WriteLine(fLine);
         }
 
         /// <summary>
@@ -64,8 +52,6 @@ namespace SSoftTest
         /// </summary>
         private void CreateNextPart()
         {
-            currentLineCounter = 0;
-
             Dispose();
 
             sw = new StreamWriter(new FileStream(fileName + partCounter.ToString() + ".html", FileMode.Create),

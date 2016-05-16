@@ -17,9 +17,8 @@ namespace SSoftTest
         private System.Int32 linePerFile;
         private System.Int32 lineCounter;
         private List<System.String> currentSentence;
-        private char[] trimChars = { ' ', '\t'};
-        private string[] sentenceTerm = { ".", "!", "?" };
-        private bool sentenceComplete = false;
+        private char[] sentenceTerm = { '.', '!', '?' };
+        private string[] sentenceTermStr = { ".", "!", "?", ".<br>", "!<br>", "?<br>" };
         private MyGlossary glossary;
         
         /// <summary>
@@ -39,42 +38,91 @@ namespace SSoftTest
             linePerFile = fLinePerFile;
         }
 
+        private List<string> SplitWithTerms(string fLine)
+        {
+            List<string> res = new List<string>();
+
+            int oldPosition = 0;
+            int index = System.Int32.MaxValue;
+
+
+            while (-1 != index)
+            {
+                index = fLine.IndexOfAny(sentenceTerm, oldPosition);
+
+                if (-1 != index)
+                {
+                    res.Add(fLine.Substring(oldPosition, index - oldPosition + 1));
+
+                    oldPosition = index + 1;
+                }
+                else
+                {
+                    System.String str = fLine.Substring(oldPosition);
+
+                    if (str != "")
+                    {
+                        res.Add(str);
+                    }
+                }
+            }
+
+            res[res.Count() - 1] += "<br>";
+
+            return res;
+        }
+
+        private bool EndsWithSentenceTerm(System.String fLine)
+        {
+            for (System.Int32 index = 0; index < sentenceTermStr.Length; index++)
+            {
+                if (fLine.EndsWith(sentenceTermStr[index]))
+                {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
         /// <summary>
-        /// Метод TraceSentence предназначен для временного хранения строк файла, из которых состоят 
+        /// Метод GetSentence предназначен для временного хранения строк файла, из которых состоят 
         /// "длинные" предложения, и для отслеживания строк, последний символ которых - 
         /// терминальный для предложений
         /// </summary>
         /// <param name="fLine">Строка входного файла (с уже произведенной заменой ключевых слов)</param>
-        private void TraceSentence(System.String fLine)
+        private IEnumerable<List<string>> GetSentence(System.String fLine)
         {
-            System.String tempStr = System.String.Copy(fLine);
-            tempStr = tempStr.TrimEnd(trimChars);
+            // разбить строку на предложения (части)
+            var content = SplitWithTerms(fLine);
 
-            // возможно, строка заканчивается терминальным символом
-            foreach (System.String str in sentenceTerm)
+            foreach(string part in content)
             {
-                if (tempStr.EndsWith(str))
+                // предложение завершено, т.е. part заканчивается терминальным символом
+                if(EndsWithSentenceTerm(part))
                 {
-                    currentSentence.Add(fLine);
-                    sentenceComplete = true;
-                    return;
+                    currentSentence.Add(part);
+                    List<string> completeSentence = new List<string>(currentSentence);
+                    currentSentence.Clear();
+                    yield return completeSentence;
+                }
+                else
+                {
+                    currentSentence.Add(part);
                 }
             }
-
-            // строка не заканчивается терминальным символом
-            currentSentence.Add(fLine);
-            sentenceComplete = false;
         }
 
         /// <summary>
-        /// Метод ProcessLine производит замену слов, совпадающих с ключевыми словами из словаря, следующим образом:
+        /// Метод ProcessLineWithHtmlTags производит замену слов, совпадающих с 
+        /// ключевыми словами из словаря, следующим образом:
         /// word -&gt; &lt;b&gt;&lt;i&gt;word&lt;/i&gt;&lt;/b&gt;
         /// </summary>
         /// <param name="fLine">Строка входного файла</param>
         /// <returns>Строка, в которой произведена замена слов, совпадающих с ключевыми словами 
         /// из словаря</returns>
         /// <remarks></remarks>
-        private System.String ProcessLine(System.String fLine)
+        private System.String ProcessLineWithHtmlTags(System.String fLine)
         {
             System.String pattern = @"\b";
 
@@ -99,36 +147,38 @@ namespace SSoftTest
         {   
             using (FileReader fr = new FileReader(inFileName))
             {
-                using (FileWriter fw = new FileWriter(outFileName, linePerFile))
+                using (FileWriter fw = new FileWriter(outFileName))
                 {
                     System.String str_in;
 
                     while((str_in = fr.ReadLine()) != null)
                     {
-                        System.String str_out = ProcessLine(str_in);
+                        System.String str_out = ProcessLineWithHtmlTags(str_in);
 
-                        ++lineCounter;
+                        var en = GetSentence(str_out).GetEnumerator();
 
-                        if(lineCounter > linePerFile)
+                        while (en.MoveNext())
                         {
-                            lineCounter = 0;
-                            fw.StepOver();
-                        }
+                            int lines = en.Current.Count();
 
-                        TraceSentence(str_out);
-                            
-                        if (sentenceComplete)
-                        {
-                            foreach (System.String str in currentSentence)
+                            if(lineCounter + lines > linePerFile)
                             {
-                                fw.WriteLine(str);
+                                lineCounter = 0;
+                                fw.StepOver();
                             }
 
-                            if (0 == lineCounter)
+                            foreach (string str in en.Current)
                             {
-                                lineCounter = currentSentence.Count();
+                                if (str != "")
+                                {
+                                    fw.WriteLine(str);
+                                    
+                                    if (str.EndsWith("<br>"))
+                                    {
+                                        ++lineCounter;
+                                    }
+                                }
                             }
-                            currentSentence.Clear();
                         }
                     }
                 }
