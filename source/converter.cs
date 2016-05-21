@@ -10,7 +10,7 @@ namespace SSoftTest
     /// <summary>
     /// Назначение класса - преобразование очередной строки входного файла в соответствии с заданием.
     /// </summary>
-    class Converter
+    public class Converter
     {
         private System.String inFileName;
         private System.String outFileName;
@@ -19,7 +19,8 @@ namespace SSoftTest
         private List<System.String> currentSentence;
         private char[] sentenceTerm = { '.', '!', '?' };
         private string[] sentenceTermStr = { ".", "!", "?", ".<br>", "!<br>", "?<br>" };
-        private MyGlossary glossary;
+        private MyGlossary<List<string>> glossary;
+        private System.String cache;
         
         /// <summary>
         /// Конструктор класса Converter.
@@ -31,7 +32,7 @@ namespace SSoftTest
         public Converter(System.String fInFileName, System.String fOutFileName, 
             System.String fGlossaryFileName, System.Int32 fLinePerFile)
         {
-            glossary = new MyGlossary(fGlossaryFileName);
+            glossary = new MyGlossary<List<string>>(fGlossaryFileName);
             currentSentence = new List<System.String>();
             inFileName = fInFileName;
             outFileName = fOutFileName;
@@ -67,7 +68,12 @@ namespace SSoftTest
                 }
             }
 
-            res[res.Count() - 1] += "<br>";
+            int tmp = res.Count();
+
+            if (tmp > 0)
+            {
+                res[tmp - 1] += "<br>";
+            }
 
             return res;
         }
@@ -128,16 +134,26 @@ namespace SSoftTest
 
             System.String retLine = System.String.Copy(fLine);
 
-            foreach (System.String str in glossary)
+            if (glossary is MyGlossary<Dictionary<string, int>>)
             {
-                retLine = Regex.Replace(retLine, pattern + str + pattern, "<b><i>" + str + "</i></b>");
+                foreach (KeyValuePair<string, int> pair in glossary)
+                {
+                    retLine = Regex.Replace(retLine, pattern + pair.Key + pattern, "<b><i>" + pair.Key + "</i></b>");
+                }
+            }
+            else
+            {
+                foreach (System.String str in glossary)
+                {
+                    retLine = Regex.Replace(retLine, pattern + str + pattern, "<b><i>" + str + "</i></b>");
+                }
             }
 
             return retLine;
         }
 
         /// <summary>
-        /// Метод DoWork производит построчное чтение входного файла, вызов функции ProcessLine 
+        /// Метод DoWork производит построчное чтение входного файла, вызов функции ProcessLineWithHtmlTags 
         /// для преобразования считанной строки и запись преобразованной строки в выходной файл
         /// </summary>
         /// <remarks>В процессе записи преобразованных строк в выходной файл метод DoWork отслеживает 
@@ -147,40 +163,46 @@ namespace SSoftTest
         {   
             using (FileReader fr = new FileReader(inFileName))
             {
-                using (FileWriter fw = new FileWriter(outFileName))
+                FileWriter fw = new FileWriter(outFileName);
+                
+                System.String str_in;
+
+                while((str_in = fr.ReadLine()) != null)
                 {
-                    System.String str_in;
+                    System.String str_out = ProcessLineWithHtmlTags(str_in);
 
-                    while((str_in = fr.ReadLine()) != null)
+                    var en = GetSentence(str_out).GetEnumerator();
+
+                    while (en.MoveNext())
                     {
-                        System.String str_out = ProcessLineWithHtmlTags(str_in);
+                        int lines = en.Current.Count();
 
-                        var en = GetSentence(str_out).GetEnumerator();
-
-                        while (en.MoveNext())
+                        if(lineCounter + lines > linePerFile)
                         {
-                            int lines = en.Current.Count();
+                            lineCounter = 0;
 
-                            if(lineCounter + lines > linePerFile)
-                            {
-                                lineCounter = 0;
-                                fw.StepOver();
-                            }
+                            fw.CreateNextPart(cache);
+                            cache = "";
+                        }
 
-                            foreach (string str in en.Current)
+                        foreach (string str in en.Current)
+                        {
+                            if (str != "")
                             {
-                                if (str != "")
-                                {
-                                    fw.WriteLine(str);
+                                cache += str;
                                     
-                                    if (str.EndsWith("<br>"))
-                                    {
-                                        ++lineCounter;
-                                    }
+                                if (str.EndsWith("<br>"))
+                                {
+                                    ++lineCounter;
                                 }
                             }
                         }
                     }
+                }
+
+                if (cache != "")
+                {
+                    fw.CreateNextPart(cache);
                 }
             }
         }

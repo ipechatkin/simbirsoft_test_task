@@ -10,9 +10,10 @@ namespace SSoftTest
     /// <summary>
     /// Класс словаря
     /// </summary>
-    internal class MyGlossary : IEnumerable
+    internal class MyGlossary<T> : IEnumerable where T : IEnumerable, new()
+    //internal class MyGlossary : IEnumerable
     {
-        private List<string> keyWordList;
+        private T/*List<string>*/ keyWords;
 
         /// <summary>
         /// Конструктор класса "Словарь"
@@ -24,12 +25,44 @@ namespace SSoftTest
             using (StreamReader sr = new StreamReader(fFileName, System.Text.Encoding.Default))
             {
                 string s = "";
-                keyWordList = new List<string>();
+                keyWords = new T/*List<string>*/();
 
                 while ((s = sr.ReadLine()) != null)
                 {
-                    keyWordList.Add(s);
+                    //keyWords.Add(s);
+                    Add(s);
                 }
+            }
+        }
+
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <param name="fLine"></param>
+        private void Add(string fLine)
+        {
+            if (keyWords is List<string>)
+            {
+                List<string> tmp = keyWords as List<string>;
+                tmp.Add(fLine);
+            }
+            else
+            if (keyWords is Queue<string>)
+            {
+                Queue<string> tmp = keyWords as Queue<string>;
+                tmp.Enqueue(fLine);
+            }
+            else
+            if (keyWords is Stack<string>)
+            {
+                Stack<string> tmp = keyWords as Stack<string>;
+                tmp.Push(fLine);
+            }
+            else
+            if (keyWords is Dictionary<string, int>)
+            {
+                Dictionary<string, int> tmp = keyWords as Dictionary<string, int>;
+                tmp.Add(fLine, 0);
             }
         }
 
@@ -40,7 +73,7 @@ namespace SSoftTest
         public IEnumerator GetEnumerator()
         {
             //return (IEnumerator)this;
-            return keyWordList.GetEnumerator();
+            return keyWords.GetEnumerator();
         }
 
         /*public bool MoveNext()

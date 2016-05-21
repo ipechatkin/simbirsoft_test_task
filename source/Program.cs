@@ -3,6 +3,7 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using System.Diagnostics;
 
 
 namespace SSoftTest
@@ -19,7 +20,14 @@ namespace SSoftTest
         static void Main(string[] args)
         {
             UserShell userShell = new UserShell();
+
+            var sw = Stopwatch.StartNew();
+
             userShell.Exec(args);
+
+            sw.Stop();
+
+            Console.WriteLine("Performance: {0}", (double)sw.ElapsedMilliseconds / 1000.0);
         }
     }
 }

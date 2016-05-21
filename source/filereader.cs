@@ -22,6 +22,7 @@ namespace SSoftTest
         /// <param name="fFileName">Путь ко входному файлу.</param>
         public FileReader(string fFileName)
         {
+            //if(!File.Exists(fFileName))
             sr = new StreamReader(new FileStream(fFileName, FileMode.Open), 
                 System.Text.Encoding.Default);
         }

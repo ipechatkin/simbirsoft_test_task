@@ -56,7 +56,7 @@ namespace SSoftTest
                     converter.DoWork();
                     Console.WriteLine("Работа успешно завершена.\n");
                 }
-                catch (Exception e)
+                catch (System.IO.IOException e)
                 {
                     Console.WriteLine(e.Message);
                 }                    
