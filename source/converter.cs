@@ -4,6 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Text.RegularExpressions;
 using System.IO;
+using System.Threading;
 
 namespace SSoftTest
 {
@@ -16,11 +17,13 @@ namespace SSoftTest
         private System.String outFileName;
         private System.Int32 linePerFile;
         private System.Int32 lineCounter;
+        private System.Int32 numOfNextPart;
         private List<System.String> currentSentence;
         private char[] sentenceTerm = { '.', '!', '?' };
         private string[] sentenceTermStr = { ".", "!", "?", ".<br>", "!<br>", "?<br>" };
         private MyGlossary<List<string>> glossary;
         private System.String cache;
+        private Thread t; 
         
         /// <summary>
         /// Конструктор класса Converter.
@@ -37,6 +40,7 @@ namespace SSoftTest
             inFileName = fInFileName;
             outFileName = fOutFileName;
             linePerFile = fLinePerFile;
+            numOfNextPart = 0;
         }
 
         private List<string> SplitWithTerms(string fLine)
@@ -152,6 +156,22 @@ namespace SSoftTest
             return retLine;
         }
 
+        void OffLoadCache()
+        {
+            if (numOfNextPart > 0)
+            {
+                t.Join();
+            }
+
+            FileWriter fw = new FileWriter(outFileName + numOfNextPart.ToString() + ".html", cache);
+            ++numOfNextPart;
+            t = new Thread(new ThreadStart(fw.CreateNextPart));
+            t.Start();
+            //FileWriter fw = new FileWriter(outFileName + numOfNextPart.ToString() + ".html", cache);
+            //++numOfNextPart;
+            //fw.CreateNextPart();
+        }
+
         /// <summary>
         /// Метод DoWork производит построчное чтение входного файла, вызов функции ProcessLineWithHtmlTags 
         /// для преобразования считанной строки и запись преобразованной строки в выходной файл
@@ -163,7 +183,7 @@ namespace SSoftTest
         {   
             using (FileReader fr = new FileReader(inFileName))
             {
-                FileWriter fw = new FileWriter(outFileName);
+                //fw = new FileWriter(outFileName);
                 
                 System.String str_in;
 
@@ -180,8 +200,7 @@ namespace SSoftTest
                         if(lineCounter + lines > linePerFile)
                         {
                             lineCounter = 0;
-
-                            fw.CreateNextPart(cache);
+                            OffLoadCache();
                             cache = "";
                         }
 
@@ -202,7 +221,7 @@ namespace SSoftTest
 
                 if (cache != "")
                 {
-                    fw.CreateNextPart(cache);
+                    OffLoadCache();
                 }
             }
         }
