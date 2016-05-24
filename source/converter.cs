@@ -9,7 +9,8 @@ using System.Threading;
 namespace SSoftTest
 {
     /// <summary>
-    /// Назначение класса - преобразование очередной строки входного файла в соответствии с заданием.
+    /// Назначение класса Converter - преобразование очередной строки входного файла в соответствии с заданием, 
+    /// накопление содержимого очередного html-файла, инициация формирования и записи очередного html-файла.
     /// </summary>
     public class Converter
     {
@@ -21,7 +22,7 @@ namespace SSoftTest
         private List<System.String> currentSentence;
         private char[] sentenceTerm = { '.', '!', '?' };
         private string[] sentenceTermStr = { ".", "!", "?", ".<br>", "!<br>", "?<br>" };
-        private MyGlossary<List<string>> glossary;
+        private MyGlossary glossary;
         private System.String cache;
         private Thread t; 
         
@@ -35,7 +36,9 @@ namespace SSoftTest
         public Converter(System.String fInFileName, System.String fOutFileName, 
             System.String fGlossaryFileName, System.Int32 fLinePerFile)
         {
-            glossary = new MyGlossary<List<string>>(fGlossaryFileName);
+            //glossary = new MyGlossary<List<string>>(fGlossaryFileName);
+            glossary = new MyGlossary(fGlossaryFileName);
+
             currentSentence = new List<System.String>();
             inFileName = fInFileName;
             outFileName = fOutFileName;
@@ -43,6 +46,11 @@ namespace SSoftTest
             numOfNextPart = 0;
         }
 
+        /// <summary>
+        /// Разделяет указанную строку символов на части с сохранением разделителей.
+        /// </summary>
+        /// <param name="fLine">Разделяемая строка</param>
+        /// <returns>Список строк - частей исходной строки (включая разделители).</returns>
         private List<string> SplitWithTerms(string fLine)
         {
             List<string> res = new List<string>();
@@ -82,6 +90,12 @@ namespace SSoftTest
             return res;
         }
 
+        /// <summary>
+        /// Определяет, заканчивается ли указанная строка одним из символов ".", "!", "?", ".<br>", "!<br>", "?<br>".
+        /// </summary>
+        /// <param name="fLine">Строка для проверки.</param>
+        /// <returns>true, если указанная строка заканчивается одним из символов ".", "!", "?", ".<br>", "!<br>", "?<br>",
+        /// false - иначе.</returns>
         private bool EndsWithSentenceTerm(System.String fLine)
         {
             for (System.Int32 index = 0; index < sentenceTermStr.Length; index++)
@@ -96,9 +110,7 @@ namespace SSoftTest
         }
 
         /// <summary>
-        /// Метод GetSentence предназначен для временного хранения строк файла, из которых состоят 
-        /// "длинные" предложения, и для отслеживания строк, последний символ которых - 
-        /// терминальный для предложений
+        /// Метод GetSentence возвращает очередное предложение языка, заканчивающееся одним из символов '.', '!' или '?'
         /// </summary>
         /// <param name="fLine">Строка входного файла (с уже произведенной заменой ключевых слов)</param>
         private IEnumerable<List<string>> GetSentence(System.String fLine)
@@ -138,24 +150,17 @@ namespace SSoftTest
 
             System.String retLine = System.String.Copy(fLine);
 
-            if (glossary is MyGlossary<Dictionary<string, int>>)
+            foreach (System.String str in glossary)
             {
-                foreach (KeyValuePair<string, int> pair in glossary)
-                {
-                    retLine = Regex.Replace(retLine, pattern + pair.Key + pattern, "<b><i>" + pair.Key + "</i></b>");
-                }
-            }
-            else
-            {
-                foreach (System.String str in glossary)
-                {
-                    retLine = Regex.Replace(retLine, pattern + str + pattern, "<b><i>" + str + "</i></b>");
-                }
+                retLine = Regex.Replace(retLine, pattern + str + pattern, "<b><i>" + str + "</i></b>");
             }
 
             return retLine;
         }
 
+        /// <summary>
+        /// Метод OffLoadCache создает поток для создания и записи очередного html-файла.
+        /// </summary>
         void OffLoadCache()
         {
             if (numOfNextPart > 0)
@@ -167,9 +172,6 @@ namespace SSoftTest
             ++numOfNextPart;
             t = new Thread(new ThreadStart(fw.CreateNextPart));
             t.Start();
-            //FileWriter fw = new FileWriter(outFileName + numOfNextPart.ToString() + ".html", cache);
-            //++numOfNextPart;
-            //fw.CreateNextPart();
         }
 
         /// <summary>
@@ -177,8 +179,8 @@ namespace SSoftTest
         /// для преобразования считанной строки и запись преобразованной строки в выходной файл
         /// </summary>
         /// <remarks>В процессе записи преобразованных строк в выходной файл метод DoWork отслеживает 
-        /// количество записанных строк и, при необходимости вызывает метод StepOver класса FileWriter 
-        /// для закрытия текущего и создания следующего html-файла.</remarks>
+        /// количество записанных строк и, при необходимости, вызывает метод OffLoadCache
+        /// для создания следующего html-файла.</remarks>
         public void DoWork()
         {   
             using (FileReader fr = new FileReader(inFileName))

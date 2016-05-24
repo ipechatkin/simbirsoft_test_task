@@ -8,9 +8,7 @@ using System.IO.MemoryMappedFiles;
 namespace SSoftTest
 {
     /// <summary>
-    /// Класс-обертка, реализующий следующую функциональность: создание объекта для записи (StreamWriter), запись строки в выходной файл,
-    /// добавление в выходной файл необходимых тэгов, корректное освобождение ресурсов (Dispose), отслеживание размера записываемого файла и
-    /// создание при необходимости следующего.
+    /// Класс FileWriter предназначен для создания и записи очередного html-файла.
     /// </summary>
     class FileWriter
     {
@@ -21,7 +19,7 @@ namespace SSoftTest
         /// Конструктор класса FileWriter.
         /// </summary>
         /// <param name="fFileName">Имя выходного файла.</param>
-        /// <param name="fContent"></param>
+        /// <param name="fContent">Содержимое выходного файла.</param>
         public FileWriter(System.String fFileName, System.String fContent)
         {
             fileName = fFileName;
@@ -30,21 +28,27 @@ namespace SSoftTest
         }
 
         /// <summary>
-        /// Публичный метод CreateNextPart. Назначение - создание следующего файла
+        /// Публичный метод CreateNextPart. Назначение - создание следующего файла.
         /// </summary>
         public void CreateNextPart()
         {
+            //Console.WriteLine(System.Text.ASCIIEncoding.Unicode.GetByteCount(content) + ":"  + fileName);
+            //Console.WriteLine(content);
+
             MemoryMappedFile mmf = MemoryMappedFile.CreateFromFile(fileName, FileMode.Create, "xxx", 
-                System.Text.ASCIIEncoding.Unicode.GetByteCount(content));
+                //System.Text.ASCIIEncoding.Unicode.GetByteCount(content) + 0);
+                System.Text.ASCIIEncoding.ASCII.GetByteCount(content));
 
             MemoryMappedViewStream stream = mmf.CreateViewStream();
 
-            StreamWriter sw = new StreamWriter(stream, System.Text.Encoding.Unicode);
-            sw.WriteLine(content);
+            //StreamWriter sw = new StreamWriter(stream, System.Text.UnicodeEncoding.Unicode);
+            StreamWriter sw = new StreamWriter(stream, System.Text.ASCIIEncoding.Default);
+            sw.Write(content);
 
-            mmf.Dispose();
+            
             sw.Close();
             stream.Dispose();
+            mmf.Dispose();
         }
     }
 }
